@@ -1,5 +1,5 @@
 {% set name = "quickjs" %}
-{% set version = "1.19.2" %}
+{% set version = "1.19.3" %}
 
 package:
   # The package is named python-quickjs to leave `quickjs` available for a binary of the wrapped library
@@ -8,12 +8,12 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: 84454b67f581fb0ab4bd99ed987fdbc23843774ddc271756e2abe7a5a5a49421
+  sha256: 677fbbac2dc6d72bf196e80c0bed70b513656deb4f31791cd07b0488363db78c
   patches:
     - setup.patch
 
 build:
-  number: 3
+  number: 0
 
 requirements:
   build:
@@ -37,7 +37,7 @@ test:
     - pip
   commands:
     - pip check
-    - python -m unittest 
+    - python -m unittest
 
 about:
   home: https://github.com/PetterS/quickjs
@@ -48,7 +48,7 @@ about:
     QuickJS is currently thread-hostile, so this wrapper makes sure that all calls to the same JS runtime comes from the same thead.
   license: MIT
   license_family: MIT
-  license_file: 
+  license_file:
     - LICENSE
     - LICENSE-quickjs
   doc_url: https://bellard.org/quickjs/
