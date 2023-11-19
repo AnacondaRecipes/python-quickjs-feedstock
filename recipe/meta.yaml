@@ -1,5 +1,5 @@
 {% set name = "quickjs" %}
-{% set version = "1.19.3" %}
+{% set version = "1.19.4" %}
 
 package:
   # The package is named python-quickjs to leave `quickjs` available for a binary of the wrapped library
@@ -8,7 +8,7 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: 677fbbac2dc6d72bf196e80c0bed70b513656deb4f31791cd07b0488363db78c
+  sha256: 1205953abc24ff757f4a795304d5d61e4bf1e555c9ef6ec96a132d4b95535484
   patches:
     - setup.patch
 
