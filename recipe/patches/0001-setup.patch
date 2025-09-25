@@ -1,8 +1,67 @@
+From 43925c44be041fad4bca1095495c7c83d6f0b7f7 Mon Sep 17 00:00:00 2001
+From: Steven <scrass@anaconda.com>
+Date: Thu, 25 Sep 2025 15:04:11 -0600
+Subject: [PATCH] Fix Windows build compatibility issues
+
+This patch addresses two main issues that prevent successful builds on Windows:
+
+1. **Linking arguments**: Changed from "-static" to "-pthread" for Windows builds
+   to avoid static linking issues with pthreads library.
+
+2. **Compilation arguments**: Made the GCC-specific "-Werror=incompatible-pointer-types"
+   flag conditional to only apply on non-Windows platforms. Windows/MSVC doesn't
+   recognize this flag and fails with "invalid numeric argument" error.
+
+The patch ensures that:
+- Windows builds use empty compile args (no GCC-specific warnings)
+- Non-Windows builds continue to use the strict pointer type checking
+- Both linking and compilation arguments are platform-appropriate
+
+This resolves the build failure:
+cl : Command line error D8021 : invalid numeric argument '/Werror=incompatible-pointer-types'
+---
+ commit_message.txt | 18 ++++++++++++++++++
+ setup.py           | 12 ++++++++----
+ 2 files changed, 26 insertions(+), 4 deletions(-)
+ create mode 100644 commit_message.txt
+
+diff --git a/commit_message.txt b/commit_message.txt
+new file mode 100644
+index 0000000..694a46a
+--- /dev/null
++++ b/commit_message.txt
+@@ -0,0 +1,18 @@
++Fix Windows build compatibility issues
++
++This patch addresses two main issues that prevent successful builds on Windows:
++
++1. **Linking arguments**: Changed from "-static" to "-pthread" for Windows builds
++   to avoid static linking issues with pthreads library.
++
++2. **Compilation arguments**: Made the GCC-specific "-Werror=incompatible-pointer-types"
++   flag conditional to only apply on non-Windows platforms. Windows/MSVC doesn't
++   recognize this flag and fails with "invalid numeric argument" error.
++
++The patch ensures that:
++- Windows builds use empty compile args (no GCC-specific warnings)
++- Non-Windows builds continue to use the strict pointer type checking
++- Both linking and compilation arguments are platform-appropriate
++
++This resolves the build failure:
++cl : Command line error D8021 : invalid numeric argument '/Werror=incompatible-pointer-types'
 diff --git a/setup.py b/setup.py
-index 4aedcbfdda..2a4107d033 100644
+index 9d17af3..de7bf5e 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -17,9 +17,7 @@ if sys.platform == "win32":
+@@ -6,6 +6,7 @@ from setuptools import setup, Extension
+ 
+ CONFIG_VERSION = open("upstream-quickjs/VERSION").read().strip()
+ extra_link_args: List[str] = []
++extra_compile_args: List[str] = []
+ 
+ if sys.platform == "win32":
+     # To build for Windows:
+@@ -17,9 +18,12 @@ if sys.platform == "win32":
      # 3. The code below will moneky-patch distutils to work.
      import distutils.cygwinccompiler
      distutils.cygwinccompiler.get_msvcr = lambda: [] 
@@ -10,6 +69,23 @@ index 4aedcbfdda..2a4107d033 100644
 -    # on computers where it is not installed.
 -    extra_link_args = ["-static"]
 +    extra_link_args = ["-pthread"]
++    # Windows/MSVC doesn't support GCC-specific warning flags
++    extra_compile_args = []
++else:
++    # GCC-specific warning flags for non-Windows platforms
++    extra_compile_args = ["-Werror=incompatible-pointer-types"]
  
  
  def get_c_sources(include_headers=False):
+@@ -54,7 +58,7 @@ _quickjs = Extension(
+     # HACK.
+     # See https://github.com/pypa/packaging-problems/issues/84.
+     sources=get_c_sources(include_headers=("sdist" in sys.argv)),
+-    extra_compile_args=["-Werror=incompatible-pointer-types"],
++    extra_compile_args=extra_compile_args,
+     extra_link_args=extra_link_args)
+ 
+ long_description = """
+-- 
+2.50.1 (Apple Git-155)
+
