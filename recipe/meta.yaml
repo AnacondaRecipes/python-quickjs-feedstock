@@ -12,6 +12,7 @@ source:
   patches:
     - patches/0001-setup.patch
     - patches/0002-fix-windows-msvc-compiler-flags.patch
+    - patches/0003-fix-windows-msvc-c-compatibility.patch
 
 build:
   number: 0

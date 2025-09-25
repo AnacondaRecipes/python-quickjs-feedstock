@@ -1,0 +1,166 @@
+From 1664722a97a145dfce84940f207daa465d2ac839 Mon Sep 17 00:00:00 2001
+From: Steven <scrass@anaconda.com>
+Date: Thu, 25 Sep 2025 13:25:00 -0600
+Subject: [PATCH] Fix Windows MSVC C code compatibility issues
+
+The build was failing on Windows with MSVC due to several C code
+compatibility issues that don't occur with GCC/Clang on Unix/macOS:
+
+1. PyObject_HEAD macro usage - incorrect semicolon after PyObject_HEAD
+2. C99 designated initializers - MSVC doesn't fully support this syntax
+3. Empty struct definition - MSVC requires at least one member
+
+This patch fixes these issues by:
+- Removing semicolon from PyObject_HEAD in ObjectData struct
+- Converting PyTypeObject definitions from C99 designated initializer
+  syntax to traditional positional initialization with comments
+- Adding a dummy member to the empty module_state struct
+
+These changes maintain compatibility with GCC/Clang while enabling
+successful compilation with MSVC on Windows.
+
+Fixes compilation errors:
+- error C2143: syntax error: missing ';' before '*'
+- error C2371: 'PyObject': redefinition; different basic types
+- error C2016: C requires that a struct or union have at least one member
+---
+ module.c | 95 ++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 82 insertions(+), 13 deletions(-)
+
+diff --git a/module.c b/module.c
+index 1234567..abcdef0 100644
+--- a/module.c
++++ b/module.c
+@@ -35,7 +35,7 @@ typedef struct {
+
+ // The data of the type _quickjs.Object.
+ typedef struct {
+-	PyObject_HEAD;
++	PyObject_HEAD
+ 	RuntimeData *runtime_data;
+ 	JSValue object;
+ } ObjectData;
+@@ -153,12 +153,27 @@ static PyMethodDef object_methods[] = {
+ };
+
+ // Define the quickjs.Object type.
+-static PyTypeObject Object = {PyVarObject_HEAD_INIT(NULL, 0).tp_name = "_quickjs.Object",
+-                              .tp_doc = "Quickjs object",
+-                              .tp_basicsize = sizeof(ObjectData),
+-                              .tp_itemsize = 0,
+-                              .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+-                              .tp_traverse = (traverseproc)object_traverse,
+-                              .tp_new = object_new,
+-                              .tp_dealloc = (destructor)object_dealloc,
+-                              .tp_call = (ternaryfunc)object_call,
+-                              .tp_methods = object_methods};
++static PyTypeObject Object = {
++    PyVarObject_HEAD_INIT(NULL, 0)
++    "_quickjs.Object",                  /* tp_name */
++    sizeof(ObjectData),                 /* tp_basicsize */
++    0,                                  /* tp_itemsize */
++    (destructor)object_dealloc,         /* tp_dealloc */
++    0,                                  /* tp_print */
++    0,                                  /* tp_getattr */
++    0,                                  /* tp_setattr */
++    0,                                  /* tp_reserved */
++    0,                                  /* tp_repr */
++    0,                                  /* tp_as_number */
++    0,                                  /* tp_as_sequence */
++    0,                                  /* tp_as_mapping */
++    0,                                  /* tp_hash */
++    (ternaryfunc)object_call,           /* tp_call */
++    0,                                  /* tp_str */
++    0,                                  /* tp_getattro */
++    0,                                  /* tp_setattro */
++    0,                                  /* tp_as_buffer */
++    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC, /* tp_flags */
++    "Quickjs object",                   /* tp_doc */
++    (traverseproc)object_traverse,      /* tp_traverse */
++    0,                                  /* tp_clear */
++    0,                                  /* tp_richcompare */
++    0,                                  /* tp_weaklistoffset */
++    0,                                  /* tp_iter */
++    0,                                  /* tp_iternext */
++    object_methods,                     /* tp_methods */
++    0,                                  /* tp_members */
++    0,                                  /* tp_getset */
++    0,                                  /* tp_base */
++    0,                                  /* tp_dict */
++    0,                                  /* tp_descr_get */
++    0,                                  /* tp_descr_set */
++    0,                                  /* tp_dictoffset */
++    0,                                  /* tp_init */
++    0,                                  /* tp_alloc */
++    object_new,                         /* tp_new */
++};
+
+ // Whether converting item to QuickJS would be possible.
+ static int python_to_quickjs_possible(RuntimeData *runtime_data, PyObject *item) {
+@@ -354,7 +369,10 @@ static PyObject *test(PyObject *self, PyObject *args) {
+ }
+
+ // Global state of the module. Currently none.
+-struct module_state {};
++struct module_state {
++    /* MSVC requires at least one member in struct */
++    int dummy;
++};
+
+ // GC traversal.
+ static int runtime_traverse(RuntimeData *self, visitproc visit, void *arg) {
+@@ -793,11 +811,46 @@ static PyGetSetDef runtime_getsetters[] = {
+ };
+
+ // Define the _quickjs.Context type.
+-static PyTypeObject Context = {PyVarObject_HEAD_INIT(NULL, 0).tp_name = "_quickjs.Context",
+-                               .tp_doc = "Quickjs context",
+-                               .tp_basicsize = sizeof(RuntimeData),
+-                               .tp_itemsize = 0,
+-                               .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+-                               .tp_traverse = (traverseproc)runtime_traverse,
+-                               .tp_clear = (inquiry)runtime_clear,
+-                               .tp_new = runtime_new,
+-                               .tp_dealloc = (destructor)runtime_dealloc,
+-                               .tp_methods = runtime_methods,
+-                               .tp_getset = runtime_getsetters};
++static PyTypeObject Context = {
++    PyVarObject_HEAD_INIT(NULL, 0)
++    "_quickjs.Context",                 /* tp_name */
++    sizeof(RuntimeData),                /* tp_basicsize */
++    0,                                  /* tp_itemsize */
++    (destructor)runtime_dealloc,        /* tp_dealloc */
++    0,                                  /* tp_print */
++    0,                                  /* tp_getattr */
++    0,                                  /* tp_setattr */
++    0,                                  /* tp_reserved */
++    0,                                  /* tp_repr */
++    0,                                  /* tp_as_number */
++    0,                                  /* tp_as_sequence */
++    0,                                  /* tp_as_mapping */
++    0,                                  /* tp_hash */
++    0,                                  /* tp_call */
++    0,                                  /* tp_str */
++    0,                                  /* tp_getattro */
++    0,                                  /* tp_setattro */
++    0,                                  /* tp_as_buffer */
++    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC, /* tp_flags */
++    "Quickjs context",                  /* tp_doc */
++    (traverseproc)runtime_traverse,     /* tp_traverse */
++    (inquiry)runtime_clear,             /* tp_clear */
++    0,                                  /* tp_richcompare */
++    0,                                  /* tp_weaklistoffset */
++    0,                                  /* tp_iter */
++    0,                                  /* tp_iternext */
++    runtime_methods,                    /* tp_methods */
++    0,                                  /* tp_members */
++    runtime_getsetters,                 /* tp_getset */
++    0,                                  /* tp_base */
++    0,                                  /* tp_dict */
++    0,                                  /* tp_descr_get */
++    0,                                  /* tp_descr_set */
++    0,                                  /* tp_dictoffset */
++    0,                                  /* tp_init */
++    0,                                  /* tp_alloc */
++    runtime_new,                        /* tp_new */
++};
