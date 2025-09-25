@@ -10,8 +10,8 @@ source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   sha256: 1205953abc24ff757f4a795304d5d61e4bf1e555c9ef6ec96a132d4b95535484
   patches:
-    - patches/0001-fix-windows-msvc-compiler-flags.patch
-    - patches/0002-setup.patch
+    - patches/0001-setup.patch
+    - patches/0002-fix-windows-msvc-compiler-flags.patch
 
 build:
   number: 0
