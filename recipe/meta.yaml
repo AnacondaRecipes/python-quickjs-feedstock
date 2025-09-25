@@ -11,9 +11,6 @@ source:
   sha256: 1205953abc24ff757f4a795304d5d61e4bf1e555c9ef6ec96a132d4b95535484
   patches:
     - patches/0001-setup.patch
-    - patches/0002-fix-windows-msvc-compiler-flags.patch
-    - patches/0003-fix-windows-msvc-c-compatibility.patch
-
 build:
   number: 0
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation
