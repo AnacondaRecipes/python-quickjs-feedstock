@@ -14,13 +14,12 @@ source:
 
 build:
   number: 0
+  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation
 
 requirements:
   build:
     - {{ compiler('c') }}  # [not win]
     - {{ stdlib("c") }}    # [not win]
-    - {{ compiler('m2w64_c') }}  # [win]
-    - {{ stdlib("m2w64_c") }}    # [win]
   host:
     - libpython  # [win]
     - python
