@@ -1,6 +1,6 @@
-From a6601a61277e15290a4502f8ecc86a5011b9bd6e Mon Sep 17 00:00:00 2001
+From 4ae36bc6e5742bf98f276ac3ea5ab73dfd1ac6b2 Mon Sep 17 00:00:00 2001
 From: Steven <scrass@anaconda.com>
-Date: Thu, 25 Sep 2025 16:19:16 -0600
+Date: Thu, 25 Sep 2025 16:29:29 -0600
 Subject: [PATCH] Fix comprehensive Windows/MSVC build compatibility issues
 
 - Make GCC compiler flags conditional (non-Windows only)
@@ -13,13 +13,15 @@ Subject: [PATCH] Fix comprehensive Windows/MSVC build compatibility issues
   * Handle function attributes (printf format, always_inline, etc.)
   * Add MSVC-specific macros for likely/unlikely, force_inline, etc.
 - Fix cutils.c function definition with GCC attributes for MSVC compatibility
+- Force 32-bit limbs in libbf.h on MSVC to avoid __int128 dependency
 ---
  module.c                   |  6 ++-
  setup.py                   | 12 ++++--
  upstream-quickjs/cutils.c  |  4 ++
  upstream-quickjs/cutils.h  | 77 ++++++++++++++++++++++++++++++++++++++
+ upstream-quickjs/libbf.h   |  5 ++-
  upstream-quickjs/quickjs.h | 10 +++++
- 5 files changed, 103 insertions(+), 6 deletions(-)
+ 6 files changed, 107 insertions(+), 7 deletions(-)
 
 diff --git a/module.c b/module.c
 index fba11c3..bf06f2f 100644
@@ -239,6 +241,22 @@ index 31f7cd8..74e6452 100644
  void dbuf_free(DynBuf *s);
  static inline BOOL dbuf_error(DynBuf *s) {
      return s->error;
+diff --git a/upstream-quickjs/libbf.h b/upstream-quickjs/libbf.h
+index 48e9d95..7f19144 100644
+--- a/upstream-quickjs/libbf.h
++++ b/upstream-quickjs/libbf.h
+@@ -27,7 +27,10 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ 
+-#if INTPTR_MAX >= INT64_MAX
++#ifdef _MSC_VER
++/* Force 32-bit limbs on MSVC since it doesn't support __int128 */
++#define LIMB_LOG2_BITS 5
++#elif INTPTR_MAX >= INT64_MAX
+ #define LIMB_LOG2_BITS 6
+ #else
+ #define LIMB_LOG2_BITS 5
 diff --git a/upstream-quickjs/quickjs.h b/upstream-quickjs/quickjs.h
 index d4a5cd3..f859aa2 100644
 --- a/upstream-quickjs/quickjs.h
