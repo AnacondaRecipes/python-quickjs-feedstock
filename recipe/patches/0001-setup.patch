@@ -1,12 +1,12 @@
-From 0a040dee02f1b1d8deb37400380d7b09f1b2f224 Mon Sep 17 00:00:00 2001
+From 33f25dfedb4210ecff39021a2319cf55d0b3e471 Mon Sep 17 00:00:00 2001
 From: Steven <scrass@anaconda.com>
-Date: Thu, 25 Sep 2025 15:48:55 -0600
+Date: Thu, 25 Sep 2025 15:59:05 -0600
 Subject: [PATCH] Fix comprehensive Windows/MSVC build compatibility issues
 
 - Make GCC compiler flags conditional (non-Windows only)
 - Fix PyObject_HEAD syntax error in module.c
 - Fix empty struct definition for MSVC compatibility
-- Fix JSValue const pointer casting for MSVC using void* intermediate cast
+- Fix JSValue casting by avoiding unnecessary cast for MSVC (same type in default build)
 ---
  module.c                   |  6 ++++--
  setup.py                   | 12 ++++++++----
@@ -75,7 +75,7 @@ index 9d17af3..de7bf5e 100644
  
  long_description = """
 diff --git a/upstream-quickjs/quickjs.h b/upstream-quickjs/quickjs.h
-index d4a5cd3..9d1ff92 100644
+index d4a5cd3..f859aa2 100644
 --- a/upstream-quickjs/quickjs.h
 +++ b/upstream-quickjs/quickjs.h
 @@ -666,7 +666,12 @@ static inline JSValue JS_DupValue(JSContext *ctx, JSValueConst v)
@@ -83,8 +83,8 @@ index d4a5cd3..9d1ff92 100644
          p->ref_count++;
      }
 +#ifdef _MSC_VER
-+    // MSVC is strict about const pointer casting - cast away const-ness
-+    return (JSValue)(void *)v;
++    // For MSVC, avoid the cast since JSValueConst and JSValue are the same type in default build
++    return v;
 +#else
      return (JSValue)v;
 +#endif
@@ -96,8 +96,8 @@ index d4a5cd3..9d1ff92 100644
          p->ref_count++;
      }
 +#ifdef _MSC_VER
-+    // MSVC is strict about const pointer casting - cast away const-ness
-+    return (JSValue)(void *)v;
++    // For MSVC, avoid the cast since JSValueConst and JSValue are the same type in default build
++    return v;
 +#else
      return (JSValue)v;
 +#endif
