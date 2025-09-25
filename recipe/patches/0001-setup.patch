@@ -1,71 +1,20 @@
-From 8a38e0763e7fa0a44894b986315c90a9bd1fea8f Mon Sep 17 00:00:00 2001
+From d223800fcc66cd2e92daf3f2e8bcc7bcfe7f6044 Mon Sep 17 00:00:00 2001
 From: Steven <scrass@anaconda.com>
-Date: Thu, 25 Sep 2025 15:23:54 -0600
-Subject: [PATCH] Fix Windows/MSVC build compatibility issues
+Date: Thu, 25 Sep 2025 15:40:33 -0600
+Subject: [PATCH] Fix comprehensive Windows/MSVC build compatibility issues
 
-This patch addresses multiple issues that prevent successful builds on Windows with MSVC:
-
-1. **Linking arguments**: Changed from "-static" to "-pthread" for Windows builds
-   to avoid static linking issues with pthreads library.
-
-2. **Compilation arguments**: Made the GCC-specific "-Werror=incompatible-pointer-types"
-   flag conditional to only apply on non-Windows platforms. Windows/MSVC doesn't
-   recognize this flag and fails with "invalid numeric argument" error.
-
-3. **MSVC syntax compatibility**: Fixed incorrect semicolon after PyObject_HEAD
-   in ObjectData struct definition (line 38 in module.c). This syntax error
-   caused cascading compilation failures in MSVC.
-
-The patch ensures that:
-- Windows builds use empty compile args (no GCC-specific warnings)
-- Non-Windows builds continue to use the strict pointer type checking
-- Both linking and compilation arguments are platform-appropriate
-- C syntax is compatible with both GCC and MSVC compilers
-
-This resolves the build failures:
-- cl : Command line error D8021 : invalid numeric argument '/Werror=incompatible-pointer-types'
-- error C2059: syntax error: ';' (PyObject_HEAD syntax issue)
-- Multiple cascading type and syntax errors in MSVC
+- Make GCC compiler flags conditional (non-Windows only)
+- Fix PyObject_HEAD syntax error in module.c
+- Fix empty struct definition for MSVC compatibility
+- Fix JSValue type casting issues for MSVC
 ---
- commit_message.txt | 25 +++++++++++++++++++++++++
- module.c           |  2 +-
- setup.py           | 12 ++++++++----
- 3 files changed, 34 insertions(+), 5 deletions(-)
- create mode 100644 commit_message.txt
+ module.c                   |  6 ++++--
+ setup.py                   | 12 ++++++++----
+ upstream-quickjs/quickjs.h | 10 ++++++++++
+ 3 files changed, 22 insertions(+), 6 deletions(-)
 
-diff --git a/commit_message.txt b/commit_message.txt
-new file mode 100644
-index 0000000..3578dfe
---- /dev/null
-+++ b/commit_message.txt
-@@ -0,0 +1,25 @@
-+Fix Windows/MSVC build compatibility issues
-+
-+This patch addresses multiple issues that prevent successful builds on Windows with MSVC:
-+
-+1. **Linking arguments**: Changed from "-static" to "-pthread" for Windows builds
-+   to avoid static linking issues with pthreads library.
-+
-+2. **Compilation arguments**: Made the GCC-specific "-Werror=incompatible-pointer-types"
-+   flag conditional to only apply on non-Windows platforms. Windows/MSVC doesn't
-+   recognize this flag and fails with "invalid numeric argument" error.
-+
-+3. **MSVC syntax compatibility**: Fixed incorrect semicolon after PyObject_HEAD
-+   in ObjectData struct definition (line 38 in module.c). This syntax error
-+   caused cascading compilation failures in MSVC.
-+
-+The patch ensures that:
-+- Windows builds use empty compile args (no GCC-specific warnings)
-+- Non-Windows builds continue to use the strict pointer type checking
-+- Both linking and compilation arguments are platform-appropriate
-+- C syntax is compatible with both GCC and MSVC compilers
-+
-+This resolves the build failures:
-+- cl : Command line error D8021 : invalid numeric argument '/Werror=incompatible-pointer-types'
-+- error C2059: syntax error: ';' (PyObject_HEAD syntax issue)
-+- Multiple cascading type and syntax errors in MSVC
 diff --git a/module.c b/module.c
-index fba11c3..aa53e01 100644
+index fba11c3..bf06f2f 100644
 --- a/module.c
 +++ b/module.c
 @@ -35,7 +35,7 @@ typedef struct {
@@ -77,6 +26,17 @@ index fba11c3..aa53e01 100644
  	RuntimeData *runtime_data;
  	JSValue object;
  } ObjectData;
+@@ -354,7 +354,9 @@ static PyObject *test(PyObject *self, PyObject *args) {
+ }
+ 
+ // Global state of the module. Currently none.
+-struct module_state {};
++struct module_state {
++	int dummy; // MSVC requires at least one member
++};
+ 
+ // GC traversal.
+ static int runtime_traverse(RuntimeData *self, visitproc visit, void *arg) {
 diff --git a/setup.py b/setup.py
 index 9d17af3..de7bf5e 100644
 --- a/setup.py
@@ -114,6 +74,36 @@ index 9d17af3..de7bf5e 100644
      extra_link_args=extra_link_args)
  
  long_description = """
+diff --git a/upstream-quickjs/quickjs.h b/upstream-quickjs/quickjs.h
+index d4a5cd3..79081df 100644
+--- a/upstream-quickjs/quickjs.h
++++ b/upstream-quickjs/quickjs.h
+@@ -666,7 +666,12 @@ static inline JSValue JS_DupValue(JSContext *ctx, JSValueConst v)
+         JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
+         p->ref_count++;
+     }
++#ifdef _MSC_VER
++    // MSVC is strict about const pointer casting
++    return (JSValue)(uintptr_t)v;
++#else
+     return (JSValue)v;
++#endif
+ }
+ 
+ static inline JSValue JS_DupValueRT(JSRuntime *rt, JSValueConst v)
+@@ -675,7 +680,12 @@ static inline JSValue JS_DupValueRT(JSRuntime *rt, JSValueConst v)
+         JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
+         p->ref_count++;
+     }
++#ifdef _MSC_VER
++    // MSVC is strict about const pointer casting
++    return (JSValue)(uintptr_t)v;
++#else
+     return (JSValue)v;
++#endif
+ }
+ 
+ int JS_ToBool(JSContext *ctx, JSValueConst val); /* return -1 for JS_EXCEPTION */
 -- 
 2.50.1 (Apple Git-155)
 
