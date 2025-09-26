@@ -9,23 +9,21 @@ package:
 source:
   url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   sha256: 1205953abc24ff757f4a795304d5d61e4bf1e555c9ef6ec96a132d4b95535484
-  patches:
-    - setup.patch
-
 build:
-  number: 3
+  number: 0
+  # Skip Windows due to MSVC incompatibility with GCC extensions (__int128, packed structs, etc.)
+  skip: true  # [win or py<38]
+  script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation
 
 requirements:
   build:
-    - {{ compiler('c') }}  # [not win]
-    - {{ stdlib("c") }}    # [not win]
-    - {{ compiler('m2w64_c') }}  # [win]
-    - {{ stdlib("m2w64_c") }}    # [win]
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
   host:
-    - libpython  # [win]
     - python
     - pip
     - setuptools
+    - poetry-core >=1.0.5
   run:
     - python
 
@@ -36,13 +34,14 @@ test:
     - quickjs
   requires:
     - pip
+    - pytest
   commands:
     - pip check
-    - python -m unittest
+    - pytest -v test_quickjs.py
 
 about:
   home: https://github.com/PetterS/quickjs
-  summary: 'Wrapping the quickjs C library.'
+  summary: Wrapping the quickjs C library
   description: |
     Python wrapper around https://bellard.org/quickjs/
     Translates types like str, float, bool, list, dict and combinations thereof to and from Javascript.
